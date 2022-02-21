@@ -32,14 +32,28 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+type (
+	SummaryLogLevels string
+	SummaryLog       struct {
+		Message string
+		Level   SummaryLogLevels
+	}
+)
+
 const (
 	indentation = "    "
+
+	Success SummaryLogLevels = "Success"
+	Failed  SummaryLogLevels = "Failed"
+	Info    SummaryLogLevels = "Info"
 )
 
 var (
 	spinnerCharSet    = spinner.CharSets[26]
 	spinnerDuration   = time.Millisecond * 500
 	appsetFieldRegexp = regexp.MustCompile(`[\./]`)
+
+	SummaryArr []SummaryLog
 )
 
 // ContextWithCancelOnSignals returns a context that is canceled when one of the specified signals
@@ -192,5 +206,29 @@ func IsIP(s string) (bool, error) {
 	return regexp.MatchString(`^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`, s)
 }
 
+func HandleCliStep(step reporter.CliStep, message string, err error, appendToLog bool) {
+	r := reporter.G()
+	status := reporter.SUCCESS
+	if err != nil {
+		status = reporter.FAILURE
+	}
 
+	r.ReportStep(reporter.CliStepData{
+		Step:        step,
+		Status:      status,
+		Description: message,
+		Err:         err,
+	})
 
+	if appendToLog {
+		AppendLogToSummary(message, err)
+	}
+}
+
+func AppendLogToSummary(message string, err error) {
+	if err != nil {
+		SummaryArr = append(SummaryArr, SummaryLog{message, Failed})
+	} else {
+		SummaryArr = append(SummaryArr, SummaryLog{message, Success})
+	}
+}

@@ -23,9 +23,10 @@ import (
 	"time"
 
 	"github.com/argoproj-labs/argocd-autopilot/pkg/kube"
-	"github.com/codefresh-io/cli-v2/pkg/config"
 	"github.com/codefresh-io/cli-v2/pkg/log"
+	"github.com/codefresh-io/cli-v2/pkg/reporter"
 	"github.com/codefresh-io/cli-v2/pkg/store"
+	"github.com/codefresh-io/cli-v2/pkg/util"
 	authv1 "k8s.io/api/authorization/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
@@ -61,7 +62,7 @@ type (
 	}
 )
 
-func EnsureClusterRequirements(ctx context.Context, kubeFactory kube.Factory, namespace string, currentContext *config.AuthContext) error {
+func EnsureClusterRequirements(ctx context.Context, kubeFactory kube.Factory, namespace string, contextUrl string) error {
 	requirementsValidationErrorMessage := "cluster does not meet minimum requirements"
 	var specificErrorMessages []string
 
@@ -173,9 +174,10 @@ func EnsureClusterRequirements(ctx context.Context, kubeFactory kube.Factory, na
 		return fmt.Errorf("%s: %v", requirementsValidationErrorMessage, specificErrorMessages)
 	}
 
-	err = runNetworkTest(ctx, kubeFactory, currentContext.URL)
+	err = runNetworkTest(ctx, kubeFactory, contextUrl)
+	util.HandleCliStep(reporter.InstallStepRunPreCheckClusterChecks, "Running cluster checks", err, false)
 	if err != nil {
-		return fmt.Errorf("cluster network tests failed: %w", err)
+		return fmt.Errorf(fmt.Sprintf("cluster network tests failed: %v ", err))
 	}
 	log.G(ctx).Info("Network test finished successfully")
 
